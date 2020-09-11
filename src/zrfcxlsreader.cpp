@@ -18,8 +18,6 @@ using namespace std;
 #include "/usr/local/include/xls.h"
 
 
-static int listening = 1;
-
 #if defined(SAPonOS400) || defined(SAPwithPASE400)
 /* o4fprintfU, o4fgetsU
  * calling o4xxxU instead of xxxU produces much smaller code,
@@ -54,24 +52,6 @@ static inline std::u16string str2u16(const std::string &str) {
     return wstr;
 }
 
-/*
-Unfortunately SE37 does not yet allow to set complex inputs, so in order to test
-this example, you will probably need to write a little ABAP report, which sets a few
-input lines for IMPORT_TAB and then does a
-
-CALL FUNCTION 'Z_RFCXLSREADER' DESTINATION 'Z_RFCXLSREADER_SERVER'
-  EXPORTING
-    import_tab       = imtab
-  IMPORTING
-    export_tab       = extab
-    resptext         = text
-  EXCEPTIONS
-    system_failure          = 1  MESSAGE mes.
-    communication_failure   = 2  MESSAGE mes.
-
-This also allows to catch the detail texts for SYSTEM_FAILURES.
-Note: STFC_DEEP_TABLE exists only from SAP_BASIS release 6.20 on.
-*/
 
 void errorHandling(RFC_RC rc, SAP_UC* description, RFC_ERROR_INFO* errorInfo, RFC_CONNECTION_HANDLE connection)
 {
@@ -119,9 +99,15 @@ RFC_RC SAP_API stfcDeepTableImplementation(RFC_CONNECTION_HANDLE rfcHandle, RFC_
     RfcGetStringLength(funcHandle, cU("IV_XLS_XSTRING"), &xstrLen, &errorInfo);
 
     SAP_RAW* pBufferX = (SAP_RAW*)malloc(xstrLen);
-    if(pBufferX) {
+    if(!pBufferX) {
         printf("Error malloc, requested xstrLen = %u\n", xstrLen);
-        return RFC_ABAP_EXCEPTION;
+
+        errorInfoP->code = RFC_ABAP_RUNTIME_FAILURE;
+        errorInfoP->group = ABAP_APPLICATION_FAILURE;
+        strncpyU(errorInfoP->key, cU("MALLOC_ERROR"), 12);
+        strncpyU(errorInfoP->message, cU("Error memory allocation"), 23);
+
+        return RFC_ABAP_RUNTIME_FAILURE;
     }
 
     RFC_RC rfc_res = RFC_OK;
@@ -136,14 +122,19 @@ RFC_RC SAP_API stfcDeepTableImplementation(RFC_CONNECTION_HANDLE rfcHandle, RFC_
     xls::xlsWorkBook* wb;
 
     printf("Opening xls file ...\n");
-    
+
     //wb = xls::xls_open_file("files/test.xls", "ANSI", &error);
     wb = xls::xls_open_buffer(pBufferX, xstrLen, "UTF-8", &error);
 
 
     if (wb == NULL)
     {
-        rfc_res = RFC_ABAP_EXCEPTION;
+        errorInfoP->code = RFC_ABAP_RUNTIME_FAILURE;
+        errorInfoP->group = ABAP_APPLICATION_FAILURE;
+        strncpyU(errorInfoP->key, cU("LIBXLS_ERROR"), 12);
+        strncpyU(errorInfoP->message, cU("Error open xls"), 14);
+
+        rfc_res = RFC_ABAP_RUNTIME_FAILURE;
         printf("Error reading file: %s\n", xls::xls_getError(error));
     }
     else
@@ -204,12 +195,12 @@ RFC_RC SAP_API stfcDeepTableImplementation(RFC_CONNECTION_HANDLE rfcHandle, RFC_
                     }
                     else if (cell->str != NULL)
                     {
-			// cell->str contains a string value
-                        
-			strLen = strlenU(cU("XLS_RECORD_STR"));
+                        // cell->str contains a string value
+
+                        strLen = strlenU(cU("XLS_RECORD_STR"));
                         RfcSetString(tabLine, cU("CELL_ID"), cU("XLS_RECORD_STR"), strLen, &errorInfo);
-                        
-			printf("Cell value: %s\t", cell->str);
+
+                        printf("Cell value: %s\t", cell->str);
                         printfU(cU("Cell valueU: %s\n"), str2u16(cell->str).c_str());
 
                         strLen = strlenU(str2u16( cell->str ).c_str());
@@ -236,39 +227,41 @@ int mainU(int argc, SAP_UC** argv)
 {
     RFC_RC rc;
     RFC_FUNCTION_DESC_HANDLE stfcDeepTableDesc;
-    RFC_CONNECTION_PARAMETER repoCon[8], serverCon[3];
+    RFC_CONNECTION_PARAMETER repoConINI;
     RFC_CONNECTION_HANDLE repoHandle, serverHandle;
     RFC_ERROR_INFO errorInfo;
 
-    serverCon[0].name = cU("program_id");
-    serverCon[0].value = cU("Z_RFCXLSREADER_SERVER");
-    serverCon[1].name = cU("gwhost");
-    serverCon[1].value = cU("s4hfaa");
-    serverCon[2].name = cU("gwserv");
-    serverCon[2].value = cU("sapgw00");
+    
+    //
+    // sapnwrfc.ini
+    //
 
-    repoCon[0].name = cU("client");
-    repoCon[0].value = cU("100");
-    repoCon[1].name = cU("user");
-    repoCon[1].value = cU("GALUSHKO");
-    repoCon[2].name = cU("passwd");
-    repoCon[2].value = cU("1q1q!Q!Q");
-    repoCon[3].name = cU("lang");
-    repoCon[3].value = cU("EN");
-    repoCon[4].name = cU("ashost");
-    repoCon[4].value = cU("s4hfaa");
-    repoCon[5].name = cU("sysnr");
-    repoCon[5].value = cU("00");
+    // key for link RfcOpenConnection and config section in sapnwrfc.ini
+    repoConINI.name = cU("dest");
+    repoConINI.value = cU("rfcxls");
 
+    // "sm59:Start on Application Server" can to find ini file
+    RfcSetIniPath(cU("/opt/zrfcxlsreader/"),&errorInfo);
+
+
+    //
+    // Fetching metadata and install server function (FM Z_RFCXLSREADER)
+    // 
+    
     printfU(cU("Logging in..."));
-    repoHandle = RfcOpenConnection (repoCon, 6, &errorInfo);
-    if (repoHandle == NULL) errorHandling(errorInfo.code, cU("Error in RfcOpenConnection()"), &errorInfo, NULL);
+    repoHandle = RfcOpenConnection (&repoConINI, 1, &errorInfo);
+
+    if (repoHandle == NULL) {
+	    errorHandling(errorInfo.code, cU("Error in RfcOpenConnection()"), &errorInfo, NULL);
+    }
     printfU(cU(" ...done\n"));
 
     printfU(cU("Fetching metadata..."));
     stfcDeepTableDesc = RfcGetFunctionDesc(repoHandle, cU("Z_RFCXLSREADER"), &errorInfo);
-    // Note: STFC_DEEP_TABLE exists only from SAP_BASIS release 6.20 on
-    if (stfcDeepTableDesc == NULL) errorHandling(errorInfo.code, cU("Error in Repository Lookup"), &errorInfo, repoHandle);
+
+    if (stfcDeepTableDesc == NULL) {
+	    errorHandling(errorInfo.code, cU("Error in Repository Lookup"), &errorInfo, repoHandle);
+    }
     printfU(cU(" ...done\n"));
 
     printfU(cU("Logging out..."));
@@ -276,61 +269,32 @@ int mainU(int argc, SAP_UC** argv)
     printfU(cU(" ...done\n"));
 
     rc = RfcInstallServerFunction(NULL, stfcDeepTableDesc, stfcDeepTableImplementation, &errorInfo);
-    if (rc != RFC_OK) errorHandling(rc, cU("Error Setting "), &errorInfo, repoHandle);
+    if (rc != RFC_OK) {
+        errorHandling(rc, cU("Error Setting "), &errorInfo, repoHandle);
+    }
 
-    printfU(cU("Registering Server..."));
-    serverHandle = RfcRegisterServer(serverCon, 3, &errorInfo);
-    if (serverHandle == NULL) errorHandling(errorInfo.code, cU("Error Starting RFC Server"), &errorInfo, NULL);
+
+    //
+    // Starting Server
+    //
+    
+    serverHandle = RfcStartServer(argc, argv,  &repoConINI, 1, &errorInfo);
+
+    if (serverHandle == NULL) {
+        errorHandling(errorInfo.code, cU("Error Starting RFC Server"), &errorInfo, NULL);
+    }
     printfU(cU(" ...done\n"));
 
+    rc = RfcListenAndDispatch(serverHandle, -1, &errorInfo);
+    printfU(cU("RfcListenAndDispatch() returned %s\n"), RfcGetRcAsString(rc));
 
+    if(rc != RFC_OK) {
+        printfU(cU("%s -- %s\n"), errorInfo.key, errorInfo.message);
+    }
 
-    printfU(cU("Starting to listen...\n\n"));
-    while(RFC_OK == rc || RFC_RETRY == rc || RFC_ABAP_EXCEPTION == rc)
-    {
-        rc = RfcListenAndDispatch(serverHandle, 120, &errorInfo);
-        printfU(cU("RfcListenAndDispatch() returned %s\n"), RfcGetRcAsString(rc));
-        switch (rc)
-        {
-        case RFC_OK:
-            break;
-        case RFC_RETRY:	// This only notifies us, that no request came in within the timeout period.
-            // We just continue our loop.
-            printfU(cU("No request within 120s.\n"));
-            break;
-        case RFC_ABAP_EXCEPTION:	// Our function module implementation has returned RFC_ABAP_EXCEPTION.
-            // This is equivalent to an ABAP function module throwing an ABAP Exception.
-            // The Exception has been returned to R/3 and our connection is still open.
-            // So we just loop around.
-            printfU(cU("ABAP_EXCEPTION in implementing function: %s\n"), errorInfo.key);
-            break;
-        case RFC_NOT_FOUND:	// R/3 tried to invoke a function module, for which we did not supply
-            // an implementation. R/3 has been notified of this through a SYSTEM_FAILURE,
-            // so we need to refresh our connection.
-            printfU(cU("Unknown function module: %s\n"), errorInfo.message);
-        /*FALLTHROUGH*/
-        case RFC_EXTERNAL_FAILURE:	// Our function module implementation raised a SYSTEM_FAILURE. In this case
-            // the connection needs to be refreshed as well.
-            printfU(cU("SYSTEM_FAILURE has been sent to backend.\n\n"));
-        /*FALLTHROUGH*/
-        case RFC_COMMUNICATION_FAILURE:
-        case RFC_ABAP_MESSAGE:		// And in these cases a fresh connection is needed as well
-        default:
-            serverHandle = RfcRegisterServer(serverCon, 3, &errorInfo);
-            rc = errorInfo.code;
-            break;
-        }
-
-        // This allows us to shutdown the RFC Server from R/3. The implementation of STFC_DEEP_TABLE
-        // will set listening to false, if IMPORT_TAB-C == STOP.
-        if (!listening)
-        {
-            RfcCloseConnection(serverHandle, NULL);
-            break;
-        }
+    if (rc == RFC_OK || rc == RFC_ABAP_EXCEPTION) {
+        RfcCloseConnection(serverHandle, NULL);
     }
 
     return 0;
 }
-
-

@@ -1,7 +1,8 @@
 # zrfcxlsreader
-Read binary Excel files from ABAP with the libxls
+Read binary Excel files from ABAP with the libxls.
 
-This is zrfcxlsreader, Started RFC Server builded with the SAP NetWeaver RFC SDK specification with libxls for reading Excel files in the nasty old binary OLE format.  
+This is zrfcxlsreader, Started RFC Server builded with the SAP NetWeaver RFC SDK specification and with the libxls.
+lixls is a nice C library for reading Excel files in the nasty old binary OLE format.
 
 The ABAP call is pretty simple:
 ```abap
@@ -10,6 +11,8 @@ data:
       lt_xls_tab         type standard table of zsrfcxlsreader,
       lv_text            like sy-lisel,
       rfc_message(128).
+
+* ...
 
 *
 * Transform XLS to internal table
@@ -67,7 +70,7 @@ make
 make install
 ```
 
-### ABAP part:
+### ABAP part
 ```
 -------------------------------------------------------
 |Package      |Obj.|Short text    |Object Name        |
@@ -80,9 +83,10 @@ make install
 -------------------------------------------------------
 ```
 ZWWW_ZRFCSLXREADER prepared for upload with ZWWW_MIGRATE tool.
+Check out the [Releases](https://github.com/nikogal/zrfcxlsreader/releases) section.
 
 ## Configuration
-### Libraries path:
+### Libraries path
 ```bash
 $:/etc/ld.so.conf.d> cat libxlsreader.conf
 /usr/local/lib64
@@ -108,7 +112,7 @@ $:/opt/zrfcxlsreader> ldd zrfcxlsreader
 ```
 
 ### Create technical user
-RFC Server fetch metadata from ABAP dictionary, for this:
+RFC Server fetch metadata from ABAP dictionary - techical user is required.
 
 Create user role with next authorization (tcode:pfcg):
 
@@ -128,7 +132,7 @@ Group/Object/Authorization/Field        'From' - 'To'                  Text
 	  ---      ACTVT                     All activities                Activity
 ```
 
-Create user with craeted role (tcode:us01):
+Create user with role Z_RFCMETADATA (tcode:us01):
 ```
 User name for example: ZRFCMETADATA 
 User Type: C Communications Data
@@ -140,17 +144,17 @@ Update user authorization in config file:
 /opt/zrfcxlsreader/sapnwrfc.ini
 ```
 
-### Create RFC Destination (tcode:sm59):
+### Create RFC Destination (tcode:sm59)
 ```
-* RFC Destination: Z_RFCXLSREADER_SERVER
-* Connection Type: T (TCP/IP Connection)
-* Activation Type: Start on Application Server
-* Program: /opt/zrfcxlsreader/zrfcxlsreader
+RFC Destination: Z_RFCXLSREADER_SERVER
+Connection Type: T (TCP/IP Connection)
+Activation Type: Start on Application Server
+Program: /opt/zrfcxlsreader/zrfcxlsreader
 ```
 
 ## Check & Test
 
-You can just run programm from console for initial check corrctnes of sapnwrfc.ini
+You can just run program from console for initial check of sapnwrfc.ini params:
 ```bash
 $:/opt/zrfcxlsreader> ./zrfcxlsreader
 Logging in... ...done
@@ -160,15 +164,18 @@ Logging out... ...done
 RfcListenAndDispatch() returned RFC_RETRY
 ```
 
-Check RFC connection via tcode:sm59 for Z_RFCXLSREADER_SERVER.
-
-Run test report in ABAP (tcode:sa38):
-Z_RFCXLSREADER_TEST Test zrfcxlsreader server.
-
-## Use Case
-It can be usefull for intergration scenario with attachment processing:
+Check RFC connection via tcode:sm59 for:
 ```
-mail sercer(IMAP)->process integration (mail adapter) -> abap proxy
+RFC destination: Z_RFCXLSREADER_SERVER.
+```
+Run test report in ABAP (tcode:sa38):
+```
+Z_RFCXLSREADER_TEST Test zrfcxlsreader server.
+```
+## Use Case
+It can be usefull for integration scenario with attachment processing:
+```
+mail sercer(IMAP)->process integration (mail adapter) -> abap proxy (xls processing)
 ```
 
 ```abap
@@ -189,13 +196,5 @@ mail sercer(IMAP)->process integration (mail adapter) -> abap proxy
           " Attachment XSTRING content
           attach_xstring = attachment->get_binary_data( ).
         endloop.
-
-
-
-
-      catch cx_ai_system_fault into gx_system.
-
-        " exception handling logic
-
-    endtry.
+* ...
 ```

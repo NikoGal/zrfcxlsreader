@@ -1,4 +1,4 @@
-# zrfcxlsreader - чтение двоичных файлов Excel с ABAP с помощью libxls
+# zrfcxlsreader - чтение двоичных файлов Excel в ABAP с помощью libxls
 
 Это zrfcxlsreader, запущенный сервер RFC, созданный со спецификацией SAP NetWeaver RFC SDK и с libxls. 
 lixls - библиотека C для чтения файлов Excel в старом двоичном формате OLE.

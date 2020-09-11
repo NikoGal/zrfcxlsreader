@@ -1,9 +1,15 @@
-zrfcxlsreader - Read binary Excel files from ABAP - Started RFC Server for libxls
+zrfcxlsreader - Read binary Excel files from ABAP with the libxls
 ==
 This is zrfcxlsreader, Started RFC Server builded with the SAP NetWeaver RFC SDK specification with libxls for reading Excel files in the nasty old binary OLE format.  
 
 The ABAP call is pretty simple:
 ```abap
+data: 
+      lv_xls_xstring     type xstring,
+      lt_xls_tab         type standard table of zsrfcxlsreader,
+      lv_text            like sy-lisel,
+      rfc_message(128).
+
 *
 * Transform XLS to internal table
 *

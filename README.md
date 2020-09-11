@@ -1,5 +1,6 @@
-zrfcxlsreader - Read binary Excel files from ABAP with the libxls
-==
+# zrfcxlsreader
+Read binary Excel files from ABAP with the libxls
+
 This is zrfcxlsreader, Started RFC Server builded with the SAP NetWeaver RFC SDK specification with libxls for reading Excel files in the nasty old binary OLE format.  
 
 The ABAP call is pretty simple:
@@ -26,13 +27,13 @@ call function 'Z_RFCXLSREADER' destination 'Z_RFCXLSREADER_SERVER'
     communication_failure = 3 message rfc_message.
 ```
 
-Installation
----
+## Installation
 
 Check out the [Releases](https://github.com/nikogal/zrfcxlsreader/releases) section.
 
-Example of deployment tree:
-
+### Deployment tree
+Example:
+```
 ├── etc
 │   └── ld.so.conf.d
 │       ├── libxlsreader.conf
@@ -57,7 +58,7 @@ Example of deployment tree:
                 ├── libicuuc.so.50
                 ├── libsapnwrfc.so
                 └── libsapucum.so
-
+```
 
 To build from source:
 ```
@@ -66,7 +67,7 @@ make
 make install
 ```
 
-ABAP part:
+### ABAP part:
 ```
 -------------------------------------------------------
 |Package      |Obj.|Short text    |Object Name        |
@@ -80,12 +81,9 @@ ABAP part:
 ```
 ZWWW_ZRFCSLXREADER prepared for upload with ZWWW_MIGRATE tool.
 
-
-Configuration
----
-
-Set correct libraries path:
-```
+## Configuration
+### Libraries path:
+```bash
 $:/etc/ld.so.conf.d> cat libxlsreader.conf
 /usr/local/lib64
 $:/etc/ld.so.conf.d> cat nwrfcsdk.conf
@@ -109,7 +107,7 @@ $:/opt/zrfcxlsreader> ldd zrfcxlsreader
         /lib64/ld-linux-x86-64.so.2     
 ```
 
-
+### Create technical user
 RFC Server fetch metadata from ABAP dictionary, for this:
 
 Create user role with next authorization (tcode:pfcg):
@@ -142,19 +140,18 @@ Update user authorization in config file:
 /opt/zrfcxlsreader/sapnwrfc.ini
 ```
 
-Create RFC Destination (tcode:sm59):
+### Create RFC Destination (tcode:sm59):
 ```
-RFC Destination: Z_RFCXLSREADER_SERVER
-Connection Type: T (TCP/IP Connection)
-Activation Type: Start on Application Server
-Program: /opt/zrfcxlsreader/zrfcxlsreader
+* RFC Destination: Z_RFCXLSREADER_SERVER
+* Connection Type: T (TCP/IP Connection)
+* Activation Type: Start on Application Server
+* Program: /opt/zrfcxlsreader/zrfcxlsreader
 ```
 
-Check & Test
----
+## Check & Test
 
 You can just run programm from console for initial check corrctnes of sapnwrfc.ini
-```
+```bash
 $:/opt/zrfcxlsreader> ./zrfcxlsreader
 Logging in... ...done
 Fetching metadata... ...done
@@ -168,16 +165,13 @@ Check RFC connection via tcode:sm59 for Z_RFCXLSREADER_SERVER.
 Run test report in ABAP (tcode:sa38):
 Z_RFCXLSREADER_TEST Test zrfcxlsreader server.
 
-Use Case
---- 
+## Use Case
+It can be usefull for intergration scenario with attachment processing:
+```
+mail sercer(IMAP)->process integration (mail adapter) -> abap proxy
+```
 
-It can be usefull for intergration scenario:
-```
-mail sercer(IMAP)->process integration (mail adapter) -> abap proxy,
-```
-for attachment processing:
-
-```
+```abap
     try.
         gr_server_context = cl_proxy_access=>get_server_context( ).
         gr_proto_msg_id ?= gr_server_context->get_protocol( if_wsprotocol=>message_id ).
@@ -191,6 +185,8 @@ for attachment processing:
         loop at attachments into attachment.
           content_type = attachment->get_content_type( ).
           document_name = attachment->get_document_name( ).
+
+          " Attachment XSTRING content
           attach_xstring = attachment->get_binary_data( ).
         endloop.
 

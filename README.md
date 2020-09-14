@@ -175,10 +175,10 @@ Z_RFCXLSREADER_TEST Test zrfcxlsreader server.
 
 ## Результат преобразования
 Исходный файл
-<img atl="xls_in_abap_source" src="https://github.com/NikoGal/zrfcxlsreader/edit/master/files/xls_in_abap_source.png">
+<img width="964" alt="xls_in_abap_source" src="https://github.com/NikoGal/zrfcxlsreader/edit/master/files/xls_in_abap_source.png">
 
 Релультат преобразования
-<img atl="xls_in_abap_result" src="https://github.com/NikoGal/zrfcxlsreader/edit/master/files/xls_in_abap_result.png">
+<img width="964" alt="xls_in_abap_result" src="https://github.com/NikoGal/zrfcxlsreader/edit/master/files/xls_in_abap_result.png">
 
 ## Варианты использования
 Данный rfc сервер может быть полезен для реализация сценария интеграции с обработкой вложений:

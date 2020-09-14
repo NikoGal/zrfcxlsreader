@@ -1,3 +1,4 @@
+[Русский](https://github.com/NikoGal/zrfcxlsreader/blob/master/README.md)
 # zrfcxlsreader - read binary Excel files from ABAP with the libxls
 
 This is zrfcxlsreader, Started RFC Server builded with the SAP NetWeaver RFC SDK specification and with the libxls.

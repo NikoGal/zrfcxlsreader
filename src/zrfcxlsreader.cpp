@@ -13,6 +13,19 @@
 #include <cstdint>
 #include <string>
 
+
+#include <sstream>
+
+namespace patch
+{
+    template < typename T > std::string to_string( const T& n )
+    {
+        std::ostringstream stm ;
+        stm << n ;
+        return stm.str() ;
+    }
+}
+
 using namespace std;
 
 #include "/usr/local/include/xls.h"
@@ -173,16 +186,32 @@ RFC_RC SAP_API stfcDeepTableImplementation(RFC_CONNECTION_HANDLE rfcHandle, RFC_
                     if (cell->id == XLS_RECORD_BLANK)
                     {
                         // do something with a blank cell
+                        strLen = strlenU(cU("XLS_RECORD_BLANK"));
+                        RfcSetString(tabLine, cU("CELL_ID"), cU("XLS_RECORD_BLANK"), strLen, &errorInfo);
                     }
                     else if (cell->id == XLS_RECORD_NUMBER)
                     {
                         // use cell->d, a double-precision number
+                        strLen = strlenU(cU("XLS_RECORD_NUMBER"));
+                        RfcSetString(tabLine, cU("CELL_ID"), cU("XLS_RECORD_NUMBER"), strLen, &errorInfo);
+
+			std::string str_double = patch::to_string(cell->d);
+                        strLen = strlenU(str2u16( str_double ).c_str());
+                        RfcSetString(tabLine, cU("CELL_STR"), str2u16( str_double ).c_str(), strLen, &errorInfo);
                     }
                     else if (cell->id == XLS_RECORD_FORMULA)
                     {
+                        strLen = strlenU(cU("XLS_RECORD_FORMULA"));
+                        RfcSetString(tabLine, cU("CELL_ID"), cU("XLS_RECORD_FORMULA"), strLen, &errorInfo);
+
                         if (strcmp(cell->str, "bool") == 0)
                         {
                             // its boolean, and test cell->d > 0.0 for true
+                            if(cell-> d > 0.0) {
+                                RfcSetString(tabLine, cU("CELL_STR"), cU("true"), 4, &errorInfo);
+                            } else {
+                                RfcSetString(tabLine, cU("CELL_STR"), cU("false"), 5, &errorInfo);
+                            }
                         }
                         else if (strcmp(cell->str, "error") == 0)
                         {
@@ -191,6 +220,9 @@ RFC_RC SAP_API stfcDeepTableImplementation(RFC_CONNECTION_HANDLE rfcHandle, RFC_
                         else
                         {
                             // cell->str is valid as the result of a string formula.
+
+                            strLen = strlenU(str2u16( cell->str ).c_str());
+                            RfcSetString(tabLine, cU("CELL_STR"), str2u16( cell->str ).c_str(), strLen, &errorInfo);
                         }
                     }
                     else if (cell->str != NULL)
@@ -205,6 +237,7 @@ RFC_RC SAP_API stfcDeepTableImplementation(RFC_CONNECTION_HANDLE rfcHandle, RFC_
 
                         strLen = strlenU(str2u16( cell->str ).c_str());
                         RfcSetString(tabLine, cU("CELL_STR"), str2u16( cell->str ).c_str(), strLen, &errorInfo);
+
                     } else {
                         strLen = strlenU(cU("XLS_RECORD_UNKNOWN"));
                         RfcSetString(tabLine, cU("CELL_ID"), cU("XLS_RECORD_UNKNOWN"), strLen, &errorInfo);
@@ -231,7 +264,7 @@ int mainU(int argc, SAP_UC** argv)
     RFC_CONNECTION_HANDLE repoHandle, serverHandle;
     RFC_ERROR_INFO errorInfo;
 
-    
+
     //
     // sapnwrfc.ini
     //
@@ -246,13 +279,13 @@ int mainU(int argc, SAP_UC** argv)
 
     //
     // Fetching metadata and install server function (FM Z_RFCXLSREADER)
-    // 
-    
+    //
+
     printfU(cU("Logging in..."));
     repoHandle = RfcOpenConnection (&repoConINI, 1, &errorInfo);
 
     if (repoHandle == NULL) {
-	    errorHandling(errorInfo.code, cU("Error in RfcOpenConnection()"), &errorInfo, NULL);
+        errorHandling(errorInfo.code, cU("Error in RfcOpenConnection()"), &errorInfo, NULL);
     }
     printfU(cU(" ...done\n"));
 
@@ -260,7 +293,7 @@ int mainU(int argc, SAP_UC** argv)
     stfcDeepTableDesc = RfcGetFunctionDesc(repoHandle, cU("Z_RFCXLSREADER"), &errorInfo);
 
     if (stfcDeepTableDesc == NULL) {
-	    errorHandling(errorInfo.code, cU("Error in Repository Lookup"), &errorInfo, repoHandle);
+        errorHandling(errorInfo.code, cU("Error in Repository Lookup"), &errorInfo, repoHandle);
     }
     printfU(cU(" ...done\n"));
 
@@ -277,7 +310,7 @@ int mainU(int argc, SAP_UC** argv)
     //
     // Starting Server
     //
-    
+
     serverHandle = RfcStartServer(argc, argv,  &repoConINI, 1, &errorInfo);
 
     if (serverHandle == NULL) {

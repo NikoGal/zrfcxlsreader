@@ -186,7 +186,7 @@ Result
 ## Use Case
 It can be usefull for integration scenario with attachment processing:
 ```
-mail sercer(IMAP)->process integration (mail adapter) -> abap proxy (xls processing)
+mail server(IMAP)->process integration (mail adapter) -> abap proxy (xls processing)
 ```
 
 ```abap

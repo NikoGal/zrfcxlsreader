@@ -18,12 +18,12 @@
 
 namespace patch
 {
-    template < typename T > std::string to_string( const T& n )
-    {
-        std::ostringstream stm ;
-        stm << n ;
-        return stm.str() ;
-    }
+template < typename T > std::string to_string( const T& n )
+{
+    std::ostringstream stm ;
+    stm << n ;
+    return stm.str() ;
+}
 }
 
 using namespace std;
@@ -51,6 +51,10 @@ using namespace std;
 #endif
 
 
+//
+// Helper functions
+//
+
 static inline std::u16string str2u16(const std::string &str) {
     std::setlocale(LC_ALL, "");
     std::u16string wstr = u"";
@@ -66,7 +70,7 @@ static inline std::u16string str2u16(const std::string &str) {
 }
 
 
-void errorHandling(RFC_RC rc, SAP_UC* description, RFC_ERROR_INFO* errorInfo, RFC_CONNECTION_HANDLE connection)
+RFC_RC errorHandling(RFC_RC rc, SAP_UC* description, RFC_ERROR_INFO* errorInfo, RFC_CONNECTION_HANDLE connection)
 {
     printfU(cU("%s: %d\n"), description, rc);
     printfU(cU("%s: %s\n"), errorInfo->key, errorInfo->message);
@@ -74,10 +78,94 @@ void errorHandling(RFC_RC rc, SAP_UC* description, RFC_ERROR_INFO* errorInfo, RF
     // backend get a "Connection reset by peer" error...
     if (connection != NULL) RfcCloseConnection(connection, errorInfo);
 
-    exit(1);
+    return errorInfo->code;
+
+//    exit(1);
 }
 
-RFC_RC SAP_API stfcDeepTableImplementation(RFC_CONNECTION_HANDLE rfcHandle, RFC_FUNCTION_HANDLE funcHandle, RFC_ERROR_INFO* errorInfoP)
+
+//
+// Hardcoding Metadata Description
+//
+
+RFC_FUNCTION_DESC_HANDLE CreateMyFunctionDesc(RFC_ERROR_INFO* errorInfo)
+{
+    RFC_RC rc = RFC_OK;
+
+
+    // Create the type description
+    
+    RFC_TYPE_DESC_HANDLE hMyTypeDesc = RfcCreateTypeDesc(cU("ZSRFCXLSREADER"), errorInfo);
+    if (hMyTypeDesc == NULL) return NULL;
+
+
+    // Define the field descriptions
+    
+    RFC_FIELD_DESC fields[] = {
+        { iU("SHEET_NAME"),	RFCTYPE_STRING,	8,	0,	8,	0,  0,0,0 },
+        { iU("SHEET_NUM"),	RFCTYPE_INT,	4,	8,	4,	8,  0,0,0 },
+        { iU("ROW_NUM"),	RFCTYPE_INT,	4,	12,	4,	12, 0,0,0 },
+        { iU("COLUMN_NUM"),	RFCTYPE_INT,	4,	16,	4,	16, 0,0,0 },
+        { iU("CELL_ID"),	RFCTYPE_STRING,	8,	24,	8,	24, 0,0,0 },
+        { iU("CELL_STR"),	RFCTYPE_STRING,	8,	32,	8,	32, 0,0,0 }
+    };
+
+
+    // Add the field descriptions to the types
+    
+    for(int i=0; i<6; ++i) {
+        rc = RfcAddTypeField(hMyTypeDesc, &fields[i], errorInfo);
+        if (rc != RFC_OK) {
+            RfcDestroyTypeDesc(hMyTypeDesc, NULL);
+            return NULL;
+        }
+    }
+
+
+    // Set total length of the type. (This locks the handle, so it can
+    // no longer be modified.
+    
+    rc = RfcSetTypeLength(hMyTypeDesc, 40, 40, errorInfo);
+    if (rc != RFC_OK) {
+        RfcDestroyTypeDesc(hMyTypeDesc, NULL);
+        return NULL;
+    }
+
+
+    // Create the function description
+
+    RFC_FUNCTION_DESC_HANDLE hMyFunctionDesc = RfcCreateFunctionDesc(cU("Z_RFCXLSREADER"), errorInfo);
+    if (hMyFunctionDesc == NULL) {
+        RfcDestroyTypeDesc(hMyTypeDesc, NULL);
+        return NULL;
+    }
+
+
+    // Define the parameter descriptions
+    
+    RFC_PARAMETER_DESC parameters[] = {
+        {iU("IV_XLS_XSTRING"), RFCTYPE_XSTRING,  RFC_IMPORT,  0,   0, 0, 0,         iU(""),iU(""), 0, 0},
+        {iU("ET_XLS_TAB"),     RFCTYPE_TABLE, RFC_EXPORT,  40, 40, 0, hMyTypeDesc, iU(""),iU(""), 0, 0}
+    };
+
+
+    // Add the parameter descriptions to the function
+   
+    for (int i=0; i<2; ++i) {
+        rc = RfcAddParameter(hMyFunctionDesc, &parameters[i], errorInfo);
+        if (rc != RFC_OK) {
+            RfcDestroyTypeDesc(hMyTypeDesc, NULL);
+            RfcDestroyFunctionDesc(hMyFunctionDesc, NULL);
+            return NULL;
+        }
+
+    }
+
+    return hMyFunctionDesc;
+}
+
+
+RFC_RC SAP_API MyFunctionImplementation(RFC_CONNECTION_HANDLE rfcHandle, RFC_FUNCTION_HANDLE funcHandle, RFC_ERROR_INFO* errorInfoP)
 {
     RFC_ATTRIBUTES attributes;
     RFC_TABLE_HANDLE importTab = 0;
@@ -88,7 +176,7 @@ RFC_RC SAP_API stfcDeepTableImplementation(RFC_CONNECTION_HANDLE rfcHandle, RFC_
     RFC_ERROR_INFO errorInfo ;
     RFC_CHAR buffer[257]; //One for the terminating zero
     RFC_INT intValue;
-    RFC_RC rc;
+    RFC_RC rc = RFC_OK;
     unsigned tabLen = 0, strLen = 0, xstrLen = 0, xstrLenActual = 0;
     unsigned  i = 0;
     buffer[256] = 0;
@@ -103,16 +191,20 @@ RFC_RC SAP_API stfcDeepTableImplementation(RFC_CONNECTION_HANDLE rfcHandle, RFC_
     printfU(cU("User     : %s\n"), attributes.user);
 
 
-    ////////////////////////////////////////////////////////////////////////////
-    //Print the Importing Parameter
+    //
+    // Importing Parameter
+    //
 
     printfU(cU("\nImporting Parameter:\n"));
 
-
-    RfcGetStringLength(funcHandle, cU("IV_XLS_XSTRING"), &xstrLen, &errorInfo);
+    rc = RfcGetStringLength(funcHandle, cU("IV_XLS_XSTRING"), &xstrLen, &errorInfo);
+    if(RFC_OK != rc) {
+    	return rc;
+    }
 
     SAP_RAW* pBufferX = (SAP_RAW*)malloc(xstrLen);
-    if(!pBufferX) {
+    if(!pBufferX) 
+    {
         printf("Error malloc, requested xstrLen = %u\n", xstrLen);
 
         errorInfoP->code = RFC_ABAP_RUNTIME_FAILURE;
@@ -123,32 +215,37 @@ RFC_RC SAP_API stfcDeepTableImplementation(RFC_CONNECTION_HANDLE rfcHandle, RFC_
         return RFC_ABAP_RUNTIME_FAILURE;
     }
 
-    RFC_RC rfc_res = RFC_OK;
-    rfc_res = RfcGetXString(funcHandle, cU("IV_XLS_XSTRING"), pBufferX, xstrLen, &xstrLenActual, &errorInfo);
-    if(RFC_OK != rfc_res) {
+    rc = RfcGetXString(funcHandle, cU("IV_XLS_XSTRING"), pBufferX, xstrLen, &xstrLenActual, &errorInfo);
+    if(RFC_OK != rc) 
+    {
         printfU(cU("Error reading xstring; xstrLen = %u, xstrLenActual = %u\n"), xstrLen, xstrLenActual);
-        return rfc_res;
+    
+	free(pBufferX);
+	return rc;
     }
 
 
+    //
+    // libxls works
+    //
+    
+    printf("Opening xls file ...\n");
+    
     xls::xls_error_t error = xls::LIBXLS_OK;
     xls::xlsWorkBook* wb;
-
-    printf("Opening xls file ...\n");
-
-    //wb = xls::xls_open_file("files/test.xls", "ANSI", &error);
+    
     wb = xls::xls_open_buffer(pBufferX, xstrLen, "UTF-8", &error);
 
-
-    if (wb == NULL)
+    if (NULL == wb)
     {
         errorInfoP->code = RFC_ABAP_RUNTIME_FAILURE;
         errorInfoP->group = ABAP_APPLICATION_FAILURE;
         strncpyU(errorInfoP->key, cU("LIBXLS_ERROR"), 12);
         strncpyU(errorInfoP->message, cU("Error open xls"), 14);
 
-        rfc_res = RFC_ABAP_RUNTIME_FAILURE;
         printf("Error reading file: %s\n", xls::xls_getError(error));
+        
+	rc = RFC_ABAP_RUNTIME_FAILURE;
     }
     else
     {
@@ -195,7 +292,7 @@ RFC_RC SAP_API stfcDeepTableImplementation(RFC_CONNECTION_HANDLE rfcHandle, RFC_
                         strLen = strlenU(cU("XLS_RECORD_NUMBER"));
                         RfcSetString(tabLine, cU("CELL_ID"), cU("XLS_RECORD_NUMBER"), strLen, &errorInfo);
 
-			std::string str_double = patch::to_string(cell->d);
+                        std::string str_double = patch::to_string(cell->d);
                         strLen = strlenU(str2u16( str_double ).c_str());
                         RfcSetString(tabLine, cU("CELL_STR"), str2u16( str_double ).c_str(), strLen, &errorInfo);
                     }
@@ -253,57 +350,43 @@ RFC_RC SAP_API stfcDeepTableImplementation(RFC_CONNECTION_HANDLE rfcHandle, RFC_
 
     printfU(cU("**** Processing of xls finished ***\n"));
 
-    return rfc_res;
+    return rc;
 }
 
 int mainU(int argc, SAP_UC** argv)
 {
     RFC_RC rc;
-    RFC_FUNCTION_DESC_HANDLE stfcDeepTableDesc;
-    RFC_CONNECTION_PARAMETER repoConINI;
+    RFC_FUNCTION_DESC_HANDLE hMyFunctionDesc;
+    RFC_CONNECTION_PARAMETER repoCon;
     RFC_CONNECTION_HANDLE repoHandle, serverHandle;
     RFC_ERROR_INFO errorInfo;
 
 
     //
     // sapnwrfc.ini
-    //
+    // Default work dir is /usr/sap/<SID>/<Instance No.>/work
 
     // key for link RfcOpenConnection and config section in sapnwrfc.ini
-    repoConINI.name = cU("dest");
-    repoConINI.value = cU("rfcxls");
-
-    // "sm59:Start on Application Server" can to find ini file
-    RfcSetIniPath(cU("/opt/zrfcxlsreader/"),&errorInfo);
+    repoCon.name = cU("dest");
+    repoCon.value = cU("rfcxls");
+    
+    //RfcSetTraceDir((SAP_UC*)getModulePath().c_str(), &errorInfo);
+    //RfcSetIniPath(getModulePaht().c_str(), &errorInfo);
 
 
     //
-    // Fetching metadata and install server function (FM Z_RFCXLSREADER)
+    // Hardcoded metadata setting Up
     //
-
-    printfU(cU("Logging in..."));
-    repoHandle = RfcOpenConnection (&repoConINI, 1, &errorInfo);
-
-    if (repoHandle == NULL) {
-        errorHandling(errorInfo.code, cU("Error in RfcOpenConnection()"), &errorInfo, NULL);
+    
+    printfU(cU("Hardcoded metadata..."));
+    hMyFunctionDesc = CreateMyFunctionDesc(&errorInfo);
+    if (hMyFunctionDesc == NULL) {
+        return errorHandling(errorInfo.code, cU("hFunctionDes is null "), &errorInfo, repoHandle);
     }
-    printfU(cU(" ...done\n"));
 
-    printfU(cU("Fetching metadata..."));
-    stfcDeepTableDesc = RfcGetFunctionDesc(repoHandle, cU("Z_RFCXLSREADER"), &errorInfo);
-
-    if (stfcDeepTableDesc == NULL) {
-        errorHandling(errorInfo.code, cU("Error in Repository Lookup"), &errorInfo, repoHandle);
-    }
-    printfU(cU(" ...done\n"));
-
-    printfU(cU("Logging out..."));
-    RfcCloseConnection(repoHandle, &errorInfo);
-    printfU(cU(" ...done\n"));
-
-    rc = RfcInstallServerFunction(NULL, stfcDeepTableDesc, stfcDeepTableImplementation, &errorInfo);
+    rc = RfcInstallServerFunction(NULL, hMyFunctionDesc, MyFunctionImplementation, &errorInfo);
     if (rc != RFC_OK) {
-        errorHandling(rc, cU("Error Setting "), &errorInfo, repoHandle);
+        return errorHandling(rc, cU("Error Setting "), &errorInfo, repoHandle);
     }
 
 
@@ -311,10 +394,9 @@ int mainU(int argc, SAP_UC** argv)
     // Starting Server
     //
 
-    serverHandle = RfcStartServer(argc, argv,  &repoConINI, 1, &errorInfo);
-
+    serverHandle = RfcStartServer(argc, argv,  &repoCon, 1, &errorInfo);
     if (serverHandle == NULL) {
-        errorHandling(errorInfo.code, cU("Error Starting RFC Server"), &errorInfo, NULL);
+        return errorHandling(errorInfo.code, cU("Error Starting RFC Server"), &errorInfo, NULL);
     }
     printfU(cU(" ...done\n"));
 

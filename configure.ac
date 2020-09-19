@@ -2,7 +2,7 @@
 # Prelude 
 
 # Initialize AC: ACINIT( package_name, version, bug_report_address)
-AC_INIT([zrfcxlsreader], [0.1])
+AC_INIT([zrfcxlsreader], [0.2])
 
 # install-sh decomp missing will be in build-aux dir
 AC_CONFIG_AUX_DIR([build-aux])

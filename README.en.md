@@ -10,7 +10,6 @@ The ABAP call is pretty simple:
 data: 
       lv_xls_xstring     type xstring,
       lt_xls_tab         type standard table of zsrfcxlsreader,
-      lv_text            like sy-lisel,
       rfc_message(128).
 
 * ...
@@ -23,7 +22,6 @@ call function 'Z_RFCXLSREADER' destination 'Z_RFCXLSREADER_SERVER'
   exporting
     iv_xls_xstring        = lv_xls_xstring
   importing
-    ev_resptext           = lv_text
     et_xls_tab            = lt_xls_tab
   exceptions
     invalid_input         = 1
@@ -42,12 +40,11 @@ Example:
 │   └── ld.so.conf.d
 │       ├── libxlsreader.conf
 │       └── nwrfcsdk.conf
-├── opt
-│   └── zrfcxlsreader
-│       ├── sapnwrfc.ini - // hardcoded path for ini path (only for ini)
-│       └── zrfcxlsreader
 └── usr
     ├── local
+    |   └── bin
+    │   │   └── zrfcxlsreader
+    |   │
     │   └── lib64
     │       ├── libxlsreader.la
     │       ├── libxlsreader.so -> libxlsreader.so.1.5.3
@@ -96,7 +93,7 @@ $:/etc/ld.so.conf.d> cat nwrfcsdk.conf
 
 $:ldconfig
 
-$:/opt/zrfcxlsreader> ldd zrfcxlsreader
+$:/usr/local/bin> ldd zrfcxlsreader
         linux-vdso.so.1                                          
         libsapucum.so     => /usr/sap/nwrfcsdk/lib/libsapucum.so 
         libsapnwrfc.so    => /usr/sap/nwrfcsdk/lib/libsapnwrfc.so
@@ -112,58 +109,15 @@ $:/opt/zrfcxlsreader> ldd zrfcxlsreader
         /lib64/ld-linux-x86-64.so.2     
 ```
 
-### Create technical user
-RFC Server fetch metadata from ABAP dictionary - techical user is required.
-
-Create user role with next authorization (tcode:pfcg):
-
-```
-Role                 Z_RFCMETADATA
-Group/Object/Authorization/Field        'From' - 'To'                  Text
----------------------------------------------------------------------------------------------------------
---   Object Class AAAB                                                 Authorization Objects
-   ---   Authorization Object S_RFC                                    
-	  |--      RFC_TYPE                  All values                    Type of RFC object to which access
-	  |--      RFC_NAME                  DDIF_FIELDINFO_GET            Name (Whitelist) of RFC object 
-	  |--      RFC_NAME                  RFC1                          Name (Whitelist) of RFC object 
-	  |--      RFC_NAME                  RFCPING                       Name (Whitelist) of RFC object 
-	  |--      RFC_NAME                  RFC_GET_FUNCTION_INTERFACE    Name (Whitelist) of RFC object 
-	  |--      RFC_NAME                  SDIFRUNTIME                   Name (Whitelist) of RFC object 
-	  |--      RFC_NAME                  SYST                          Name (Whitelist) of RFC object 
-	  ---      ACTVT                     All activities                Activity
-```
-
-Create user with role Z_RFCMETADATA (tcode:us01):
-```
-User name for example: ZRFCMETADATA 
-User Type: C Communications Data
-Roles: Z_RFCMETADATA
-```
-
-Update user authorization in config file:
-```
-/opt/zrfcxlsreader/sapnwrfc.ini
-```
-
 ### Create RFC Destination (tcode:sm59)
 ```
 RFC Destination: Z_RFCXLSREADER_SERVER
 Connection Type: T (TCP/IP Connection)
 Activation Type: Start on Application Server
-Program: /opt/zrfcxlsreader/zrfcxlsreader
+Program: /usr/local/bin/zrfcxlsreader
 ```
 
-## Check & Test
-
-You can just run program from console for initial check of sapnwrfc.ini params:
-```bash
-$:/opt/zrfcxlsreader> ./zrfcxlsreader
-Logging in... ...done
-Fetching metadata... ...done
-Logging out... ...done
- ...done
-RfcListenAndDispatch() returned RFC_RETRY
-```
+## Test
 
 Check RFC connection via tcode:sm59 for:
 ```

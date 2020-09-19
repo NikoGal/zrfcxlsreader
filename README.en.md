@@ -1,6 +1,8 @@
+[Русский](https://github.com/NikoGal/zrfcxlsreader/blob/master/README.md)
 # zrfcxlsreader - read binary Excel files from ABAP with the libxls
 
 This is zrfcxlsreader, Started RFC Server builded with the SAP NetWeaver RFC SDK specification and with the libxls.
+
 lixls is a nice C library for reading Excel files in the nasty old binary OLE format.
 
 The ABAP call is pretty simple:
@@ -171,10 +173,20 @@ Run test report in ABAP (tcode:sa38):
 ```
 Z_RFCXLSREADER_TEST Test zrfcxlsreader server.
 ```
+
+## Transformation result
+Source file
+
+<img width="468" alt="xls_in_abap_source" src="https://github.com/NikoGal/zrfcxlsreader/blob/master/files/xls_in_abap_source.png">
+
+Result
+
+<img width="468" alt="xls_in_abap_result" src="https://github.com/NikoGal/zrfcxlsreader/blob/master/files/xls_in_abap_result.png">
+
 ## Use Case
 It can be usefull for integration scenario with attachment processing:
 ```
-mail sercer(IMAP)->process integration (mail adapter) -> abap proxy (xls processing)
+mail server(IMAP)->process integration (mail adapter) -> abap proxy (xls processing)
 ```
 
 ```abap

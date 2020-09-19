@@ -1,3 +1,4 @@
+[English](https://github.com/NikoGal/zrfcxlsreader/blob/master/README.en.md)
 # zrfcxlsreader - чтение xls файлов в ABAP с помощью libxls
 
 zrfcxlsreader является Started RFC сервером по спецификации SAP NetWeaver RFC SDK, который обеспечивает возможность обработки бинарных xls фалов в ABAP с помощью библиотеки  libxls.
@@ -172,6 +173,16 @@ RFC destination: Z_RFCXLSREADER_SERVER.
 ```
 Z_RFCXLSREADER_TEST Test zrfcxlsreader server.
 ```
+
+## Результат преобразования
+Исходный файл
+
+<img width="468" alt="xls_in_abap_source" src="https://github.com/NikoGal/zrfcxlsreader/blob/master/files/xls_in_abap_source.png">
+
+Результат преобразования
+
+<img width="468" alt="xls_in_abap_result" src="https://github.com/NikoGal/zrfcxlsreader/blob/master/files/xls_in_abap_result.png">
+
 ## Варианты использования
 Данный rfc сервер может быть полезен для реализация сценария интеграции с обработкой вложений:
 ```

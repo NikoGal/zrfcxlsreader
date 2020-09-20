@@ -29,6 +29,15 @@ call function 'Z_RFCXLSREADER' destination 'Z_RFCXLSREADER_SERVER'
     communication_failure = 3 message rfc_message.
 ```
 
+## Результат преобразования
+Исходный файл
+
+<img width="468" alt="xls_in_abap_source" src="https://github.com/NikoGal/zrfcxlsreader/blob/master/files/xls_in_abap_source.png">
+
+Результат преобразования
+
+<img width="468" alt="xls_in_abap_result" src="https://github.com/NikoGal/zrfcxlsreader/blob/master/files/xls_in_abap_result.png">
+
 ## Установка
 
 Скомпилированные библиотеки можно найти в разделе [Releases](https://github.com/nikogal/zrfcxlsreader/releases).
@@ -129,15 +138,6 @@ RFC destination: Z_RFCXLSREADER_SERVER.
 ```
 Z_RFCXLSREADER_TEST Test zrfcxlsreader server.
 ```
-
-## Результат преобразования
-Исходный файл
-
-<img width="468" alt="xls_in_abap_source" src="https://github.com/NikoGal/zrfcxlsreader/blob/master/files/xls_in_abap_source.png">
-
-Результат преобразования
-
-<img width="468" alt="xls_in_abap_result" src="https://github.com/NikoGal/zrfcxlsreader/blob/master/files/xls_in_abap_result.png">
 
 ## Варианты использования
 Данный rfc сервер может быть полезен для реализация сценария интеграции с обработкой вложений:

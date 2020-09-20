@@ -28,6 +28,14 @@ call function 'Z_RFCXLSREADER' destination 'Z_RFCXLSREADER_SERVER'
     system_failure        = 2 message rfc_message
     communication_failure = 3 message rfc_message.
 ```
+## Transformation result
+Source file
+
+<img width="468" alt="xls_in_abap_source" src="https://github.com/NikoGal/zrfcxlsreader/blob/master/files/xls_in_abap_source.png">
+
+Result
+
+<img width="468" alt="xls_in_abap_result" src="https://github.com/NikoGal/zrfcxlsreader/blob/master/files/xls_in_abap_result.png">
 
 ## Installation
 
@@ -127,15 +135,6 @@ Run test report in ABAP (tcode:sa38):
 ```
 Z_RFCXLSREADER_TEST Test zrfcxlsreader server.
 ```
-
-## Transformation result
-Source file
-
-<img width="468" alt="xls_in_abap_source" src="https://github.com/NikoGal/zrfcxlsreader/blob/master/files/xls_in_abap_source.png">
-
-Result
-
-<img width="468" alt="xls_in_abap_result" src="https://github.com/NikoGal/zrfcxlsreader/blob/master/files/xls_in_abap_result.png">
 
 ## Use Case
 It can be usefull for integration scenario with attachment processing:

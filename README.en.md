@@ -157,7 +157,7 @@ mail server(IMAP)->process integration (mail adapter) -> abap proxy (xls process
           content_type = attachment->get_content_type( ).
           document_name = attachment->get_document_name( ).
 
-          " Attachment XSTRING content
+          " Attachment is XSTRING content
           attach_xstring = attachment->get_binary_data( ).
           
           call function 'Z_RFCXLSREADER' destination 'Z_RFCXLSREADER_SERVER'
@@ -170,7 +170,7 @@ mail server(IMAP)->process integration (mail adapter) -> abap proxy (xls process
               system_failure        = 2 message rfc_message
               communication_failure = 3 message rfc_message.
               
-              " ...
+            " ...
               
         endloop.
 * ...
